@@ -1,0 +1,428 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
+import { Switch } from "@/components/ui/Switch";
+import { Modal } from "@/components/ui/Modal";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/services/httpClient";
+import { Event, Participant, SecretFriendPair } from "@/types";
+import { handleValidationErrors, showSuccessToast } from "@/utils/errorHandler";
+import useFetch from "@/hooks/useFetch";
+import useSWR from "swr";
+
+export default function EventDetailsPage() {
+  const router = useRouter();
+  const params = useParams();
+  const { isAuthenticated, userEmail } = useAuth();
+  const eventUUID = params.uuid as string;
+
+  const [showDrawModal, setShowDrawModal] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  const [newParticipant, setNewParticipant] = useState({
+    name: "",
+  });
+  const [isAdding, setIsAdding] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Buscar evento usando useFetch
+  const {
+    data: eventData,
+    isLoading: isLoadingEvent,
+    error: eventError,
+  } = useFetch<Event>({
+    url: `/api/events/${eventUUID}`,
+  });
+
+  // Buscar participantes usando useFetch
+  const {
+    data: participantsData,
+    isLoading: isLoadingParticipants,
+    error: participantsError,
+  } = useFetch<Participant[]>({
+    url: `/api/events/${eventUUID}/participants`,
+  });
+
+  // Mutate para recarregar dados
+  const { mutate: mutateEvent } = useSWR(`/api/events/${eventUUID}`);
+  const { mutate: mutateParticipants } = useSWR(
+    `/api/events/${eventUUID}/participants`
+  );
+
+  // Mapear e processar dados do evento
+  const event = useMemo(() => {
+    if (!eventData) return null;
+
+    return {
+      ...eventData,
+      uuid: eventData.uuid || (eventData as any).id,
+      date: eventData.date || (eventData as any).event_date,
+      min_value: eventData.min_value || (eventData as any).minValue,
+      max_value: eventData.max_value || (eventData as any).maxValue,
+    } as Event;
+  }, [eventData]);
+
+  // Processar participantes
+  const participants = useMemo(() => {
+    if (!participantsData) return [];
+    if (Array.isArray(participantsData)) return participantsData;
+    return (participantsData as any)?.data || [];
+  }, [participantsData]);
+
+  // Processar pares do sorteio
+  const pairs = useMemo(() => {
+    return event?.pairs || [];
+  }, [event]);
+
+  const isLoading = isLoadingEvent || isLoadingParticipants;
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    if (eventError && !isLoadingEvent) {
+      alert("Evento não encontrado");
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, eventError, isLoadingEvent, router]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("pt-BR");
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  const formatWhatsApp = (whatsapp: string) => {
+    // Formatação simples: (XX) XXXXX-XXXX
+    const cleaned = whatsapp.replace(/\D/g, "");
+    if (cleaned.length === 11) {
+      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    }
+    return whatsapp;
+  };
+
+  const handleAddParticipant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    if (!newParticipant.name.trim()) {
+      setErrors({ name: "Nome é obrigatório" });
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      await api.post(`/api/events/${eventUUID}/participants`, {
+        name: newParticipant.name,
+      });
+
+      setNewParticipant({ name: "" });
+      mutateParticipants();
+    } catch (error) {
+      handleValidationErrors(error, setErrors);
+      console.error(error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleToggleConfirmation = async (
+    participantId: string,
+    confirmed: boolean
+  ) => {
+    try {
+      await api.put(`/api/events/${eventUUID}/participants/${participantId}`, {
+        confirmed: confirmed,
+      });
+      mutateParticipants();
+    } catch (error) {
+      handleValidationErrors(error);
+      console.error(error);
+    }
+  };
+
+  const handlePerformDraw = async () => {
+    setIsDrawing(true);
+
+    try {
+      const response = await api.post(`/api/events/${eventUUID}/draw`);
+      mutateEvent();
+      mutateParticipants();
+      setShowDrawModal(false);
+      showSuccessToast("Sorteio realizado com sucesso!");
+    } catch (error: any) {
+      handleValidationErrors(error);
+    } finally {
+      setIsDrawing(false);
+    }
+  };
+
+  if (!isAuthenticated || isLoading || !event) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Carregando...</p>
+      </div>
+    );
+  }
+
+  const confirmed = participants.filter((p: Participant) => p.confirmed).length;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {event.title}
+              </h1>
+              <p className="text-sm text-gray-600">{formatDate(event.date)}</p>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => router.push("/dashboard")}
+            >
+              ← Voltar para o painel
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header do evento */}
+        <Card className="mb-6">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-700 mb-2">
+                Informações do evento
+              </h2>
+              <p className="text-gray-600">
+                {event.description || "Sem descrição"}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+              <div>
+                <p className="text-sm text-gray-500">Valor mínimo</p>
+                <p className="font-semibold">
+                  {formatCurrency(event.min_value)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Valor máximo</p>
+                <p className="font-semibold">
+                  {formatCurrency(event.max_value)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total de participantes</p>
+                <p className="font-semibold">{participants.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Confirmados</p>
+                <p className="font-semibold">{confirmed}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Resumo do evento */}
+        <Card className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Status do sorteio</h3>
+              <p className="text-gray-600">
+                {event.drawPerformed
+                  ? `Sorteio realizado em ${
+                      event.drawDate
+                        ? formatDate(event.drawDate)
+                        : "data não informada"
+                    }`
+                  : "Ainda não realizado"}
+              </p>
+            </div>
+            {!event.drawPerformed && (
+              <Button
+                variant="primary"
+                onClick={() => setShowDrawModal(true)}
+                disabled={confirmed < 2}
+              >
+                Realizar sorteio
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        {/* Cadastro de participantes */}
+        <Card className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Adicionar participante</h3>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const url = `${window.location.origin}/events/${eventUUID}/confirm`;
+                navigator.clipboard.writeText(url);
+                alert("Link copiado! Compartilhe com os participantes.");
+              }}
+            >
+              Copiar link de confirmação
+            </Button>
+          </div>
+          <form onSubmit={handleAddParticipant} className="space-y-4">
+            <Input
+              label="Nome"
+              type="text"
+              value={newParticipant.name}
+              onChange={(e) =>
+                setNewParticipant({
+                  name: e.target.value,
+                })
+              }
+              error={errors.name}
+              placeholder="Nome completo"
+              required
+            />
+            <p className="text-sm text-gray-500">
+              💡 O participante receberá um link para informar seu WhatsApp e
+              confirmar presença.
+            </p>
+            <Button type="submit" isLoading={isAdding}>
+              Adicionar participante
+            </Button>
+          </form>
+        </Card>
+
+        {/* Lista de participantes */}
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">Participantes</h3>
+          {participants.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">
+              Nenhum participante cadastrado ainda.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                      Nome
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                      WhatsApp
+                    </th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                      Confirmado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {participants.map((participant: Participant) => (
+                    <tr
+                      key={participant.id}
+                      className="border-b hover:bg-gray-50"
+                    >
+                      <td className="py-3 px-4">{participant.name}</td>
+                      <td className="py-3 px-4">
+                        {participant.whatsapp
+                          ? formatWhatsApp(participant.whatsapp)
+                          : "Não informado"}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {participant.confirmed ? (
+                          <span className="text-green-600 font-medium">
+                            ✓ Confirmado
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Pendente</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Resultado do sorteio */}
+        {event.drawPerformed && pairs.length > 0 && (
+          <Card className="mt-6">
+            <h3 className="text-lg font-semibold mb-4">Resultado do sorteio</h3>
+            <div className="space-y-3">
+              {pairs.map((pair, index) => (
+                <div
+                  key={index}
+                  className="bg-blue-50 p-4 rounded-lg border border-blue-200"
+                >
+                  <p className="font-medium text-gray-900">
+                    <span className="text-blue-600">
+                      {pair.participantName}
+                    </span>
+                    {" → tirou → "}
+                    <span className="text-blue-600">
+                      {pair.secretFriendName}
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-gray-500">
+              💡 <strong>Nota:</strong> Em produção, os participantes receberiam
+              automaticamente uma mensagem no WhatsApp com o nome do seu amigo
+              secreto.
+            </p>
+          </Card>
+        )}
+      </main>
+
+      {/* Modal de confirmação de sorteio */}
+      <Modal
+        isOpen={showDrawModal}
+        onClose={() => setShowDrawModal(false)}
+        title="Confirmar sorteio"
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => setShowDrawModal(false)}
+              disabled={isDrawing}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handlePerformDraw} isLoading={isDrawing}>
+              Confirmar e realizar sorteio
+            </Button>
+          </>
+        }
+      >
+        <p className="text-gray-700 mb-4">
+          Tem certeza que deseja realizar o sorteio?
+        </p>
+        <p className="text-gray-600 text-sm mb-4">
+          Após confirmar, os pares serão definidos e não poderão ser alterados.
+        </p>
+        <p className="text-gray-600 text-sm">
+          <strong>Participantes confirmados:</strong> {confirmed} de{" "}
+          {participants.length}
+        </p>
+        {confirmed < 2 && (
+          <p className="text-red-600 text-sm mt-2">
+            ⚠️ É necessário pelo menos 2 participantes confirmados para realizar
+            o sorteio.
+          </p>
+        )}
+      </Modal>
+    </div>
+  );
+}
