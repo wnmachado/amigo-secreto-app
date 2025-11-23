@@ -29,8 +29,8 @@ export default function Home() {
   const [formData, setFormData] = useState({
     title: "",
     event_date: "",
-    minValue: "",
-    maxValue: "",
+    min_value: "",
+    max_value: "",
     description: "",
     email: "",
   });
@@ -40,14 +40,14 @@ export default function Home() {
 
     if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
     if (!formData.event_date) newErrors.event_date = "Data é obrigatória";
-    if (!formData.minValue || parseFloat(formData.minValue) <= 0) {
-      newErrors.minValue = "Valor mínimo deve ser maior que zero";
+    if (!formData.min_value || parseFloat(formData.min_value) <= 0) {
+      newErrors.min_value = "Valor mínimo deve ser maior que zero";
     }
-    if (!formData.maxValue || parseFloat(formData.maxValue) <= 0) {
-      newErrors.maxValue = "Valor máximo deve ser maior que zero";
+    if (!formData.max_value || parseFloat(formData.max_value) <= 0) {
+      newErrors.max_value = "Valor máximo deve ser maior que zero";
     }
-    if (parseFloat(formData.minValue) >= parseFloat(formData.maxValue)) {
-      newErrors.maxValue = "Valor máximo deve ser maior que o mínimo";
+    if (parseFloat(formData.min_value) >= parseFloat(formData.max_value)) {
+      newErrors.max_value = "Valor máximo deve ser maior que o mínimo";
     }
     if (!formData.email.trim()) {
       newErrors.email = "E-mail é obrigatório";
@@ -71,8 +71,8 @@ export default function Home() {
       await api.post("/api/events", {
         title: formData.title,
         event_date: formData.event_date,
-        minValue: parseFloat(formData.minValue),
-        maxValue: parseFloat(formData.maxValue),
+        min_value: parseFloat(formData.min_value),
+        max_value: parseFloat(formData.max_value),
         description: formData.description,
         email: formData.email,
       });
@@ -185,11 +185,11 @@ export default function Home() {
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.minValue}
+                value={formData.min_value}
                 onChange={(e) =>
-                  setFormData({ ...formData, minValue: e.target.value })
+                  setFormData({ ...formData, min_value: e.target.value })
                 }
-                error={errors.minValue}
+                error={errors.min_value}
                 placeholder="0.00"
                 required
               />
@@ -199,11 +199,11 @@ export default function Home() {
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.maxValue}
+                value={formData.max_value}
                 onChange={(e) =>
-                  setFormData({ ...formData, maxValue: e.target.value })
+                  setFormData({ ...formData, max_value: e.target.value })
                 }
-                error={errors.maxValue}
+                error={errors.max_value}
                 placeholder="0.00"
                 required
               />

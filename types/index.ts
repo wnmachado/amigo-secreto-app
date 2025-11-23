@@ -15,9 +15,10 @@ export interface Participant {
   id: string;
   eventId: string;
   name: string;
-  whatsapp?: string; // Optional - will be filled by the participant
-  confirmed: boolean;
-  secretFriendId?: string; // ID of the participant who got this one
+  whatsapp_number?: string; // Optional - will be filled by the participant
+  is_confirmed: boolean;
+  gift_suggestion?: string;
+  secret_friend_id?: string; // ID of the participant who got this one
 }
 
 export interface SecretFriendPair {

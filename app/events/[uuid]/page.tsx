@@ -61,8 +61,8 @@ export default function EventDetailsPage() {
       ...eventData,
       uuid: eventData.uuid || (eventData as any).id,
       date: eventData.date || (eventData as any).event_date,
-      min_value: eventData.min_value || (eventData as any).minValue,
-      max_value: eventData.max_value || (eventData as any).maxValue,
+      min_value: eventData.min_value || (eventData as any).min_value,
+      max_value: eventData.max_value || (eventData as any).max_value,
     } as Event;
   }, [eventData]);
 
@@ -177,7 +177,9 @@ export default function EventDetailsPage() {
     );
   }
 
-  const confirmed = participants.filter((p: Participant) => p.confirmed).length;
+  const confirmed = participants.filter(
+    (p: Participant) => p.is_confirmed
+  ).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -334,12 +336,12 @@ export default function EventDetailsPage() {
                     >
                       <td className="py-3 px-4">{participant.name}</td>
                       <td className="py-3 px-4">
-                        {participant.whatsapp
-                          ? formatWhatsApp(participant.whatsapp)
+                        {participant.whatsapp_number
+                          ? formatWhatsApp(participant.whatsapp_number)
                           : "Não informado"}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {participant.confirmed ? (
+                        {participant.is_confirmed ? (
                           <span className="text-green-600 font-medium">
                             ✓ Confirmado
                           </span>

@@ -9,8 +9,8 @@ import { Event } from "@/types";
 interface EventFormData {
   title: string;
   event_date: string;
-  minValue: string;
-  maxValue: string;
+  min_value: string;
+  max_value: string;
   description: string;
 }
 
@@ -32,8 +32,8 @@ export function EventForm({
   const [formData, setFormData] = useState<EventFormData>({
     title: "",
     event_date: "",
-    minValue: "",
-    maxValue: "",
+    min_value: "",
+    max_value: "",
     description: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -48,8 +48,14 @@ export function EventForm({
       setFormData({
         title: initialData.title || "",
         event_date: dateValue,
-        minValue: initialData.min_value?.toString() || initialData.minValue?.toString() || "",
-        maxValue: initialData.max_value?.toString() || initialData.maxValue?.toString() || "",
+        min_value:
+          initialData.min_value?.toString() ||
+          initialData.min_value?.toString() ||
+          "",
+        max_value:
+          initialData.max_value?.toString() ||
+          initialData.max_value?.toString() ||
+          "",
         description: initialData.description || "",
       });
     }
@@ -60,14 +66,14 @@ export function EventForm({
 
     if (!formData.title.trim()) newErrors.title = "Título é obrigatório";
     if (!formData.event_date) newErrors.event_date = "Data é obrigatória";
-    if (!formData.minValue || parseFloat(formData.minValue) <= 0) {
-      newErrors.minValue = "Valor mínimo deve ser maior que zero";
+    if (!formData.min_value || parseFloat(formData.min_value) <= 0) {
+      newErrors.min_value = "Valor mínimo deve ser maior que zero";
     }
-    if (!formData.maxValue || parseFloat(formData.maxValue) <= 0) {
-      newErrors.maxValue = "Valor máximo deve ser maior que zero";
+    if (!formData.max_value || parseFloat(formData.max_value) <= 0) {
+      newErrors.max_value = "Valor máximo deve ser maior que zero";
     }
-    if (parseFloat(formData.minValue) >= parseFloat(formData.maxValue)) {
-      newErrors.maxValue = "Valor máximo deve ser maior que o mínimo";
+    if (parseFloat(formData.min_value) >= parseFloat(formData.max_value)) {
+      newErrors.max_value = "Valor máximo deve ser maior que o mínimo";
     }
 
     setErrors(newErrors);
@@ -88,9 +94,7 @@ export function EventForm({
         label="Título do evento"
         type="text"
         value={formData.title}
-        onChange={(e) =>
-          setFormData({ ...formData, title: e.target.value })
-        }
+        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
         error={errors.title}
         placeholder="Ex: Amigo Secreto de Natal 2024"
         required
@@ -113,11 +117,11 @@ export function EventForm({
           type="number"
           step="0.01"
           min="0"
-          value={formData.minValue}
+          value={formData.min_value}
           onChange={(e) =>
-            setFormData({ ...formData, minValue: e.target.value })
+            setFormData({ ...formData, min_value: e.target.value })
           }
-          error={errors.minValue}
+          error={errors.min_value}
           placeholder="0.00"
           required
         />
@@ -127,11 +131,11 @@ export function EventForm({
           type="number"
           step="0.01"
           min="0"
-          value={formData.maxValue}
+          value={formData.max_value}
           onChange={(e) =>
-            setFormData({ ...formData, maxValue: e.target.value })
+            setFormData({ ...formData, max_value: e.target.value })
           }
-          error={errors.maxValue}
+          error={errors.max_value}
           placeholder="0.00"
           required
         />

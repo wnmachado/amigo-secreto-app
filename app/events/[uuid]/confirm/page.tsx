@@ -11,7 +11,7 @@ import api from "@/services/httpClient";
 import { Event, Participant } from "@/types";
 import { handleValidationErrors, showSuccessToast } from "@/utils/errorHandler";
 import useFetch from "@/hooks/useFetch";
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 
 export default function ConfirmParticipantPage() {
   const params = useParams();
@@ -40,20 +40,17 @@ export default function ConfirmParticipantPage() {
   });
 
   // Buscar participantes não confirmados usando useFetch
-  const {
-    data: participantsData,
-    isLoading: isLoadingParticipants,
-    error: participantsError,
-  } = useFetch<Participant[]>({
+  const { data: participantsData, isLoading: isLoadingParticipants } = useFetch<
+    Participant[]
+  >({
     url: `/api/events/${eventUUID}/participants`,
     params: { confirmed: false },
   });
 
-  // Mutate para recarregar dados
-  const { mutate: mutateEvent } = useSWR(`/api/events/${eventUUID}`);
-  const { mutate: mutateParticipants } = useSWR(
-    `/api/events/${eventUUID}/participants?confirmed=false`
-  );
+  // Mutate para recarregar dados - usar a mesma chave que o useFetch usa
+  // O useFetch usa a URL como chave do SWR internamente
+  const participantsKey = `/api/events/${eventUUID}/participants`;
+  const { mutate: mutateParticipants } = useSWR(participantsKey);
 
   // Mapear e processar dados do evento
   const event = useMemo(() => {
@@ -63,8 +60,8 @@ export default function ConfirmParticipantPage() {
       ...eventData,
       uuid: eventData.uuid || (eventData as any).id,
       date: eventData.date || (eventData as any).event_date,
-      min_value: eventData.min_value || (eventData as any).minValue,
-      max_value: eventData.max_value || (eventData as any).maxValue,
+      min_value: eventData.min_value || (eventData as any).min_value,
+      max_value: eventData.max_value || (eventData as any).max_value,
     } as Event;
   }, [eventData]);
 
@@ -164,7 +161,7 @@ export default function ConfirmParticipantPage() {
           `/api/events/${eventUUID}/participants/${selectedParticipantId}/verify-whatsapp-code`,
           { whatsapp_number: cleaned, code: inputCode }
         )
-        .catch(async () => {
+        .catch(async (error) => {
           // Fallback para mock se endpoint não existir
           console.log(`[MOCK] Verificação de código para WhatsApp ${cleaned}`);
           // Atualizar participante como confirmado
@@ -176,6 +173,14 @@ export default function ConfirmParticipantPage() {
               gift_suggestion: giftSuggestion.trim(),
             }
           );
+          // Recarregar lista após atualizar no fallback
+          await globalMutate(
+            (key: any) =>
+              typeof key === "string" &&
+              key.includes(`/api/events/${eventUUID}/participants`),
+            undefined,
+            { revalidate: true }
+          );
           return { data: { success: true } };
         });
 
@@ -185,19 +190,29 @@ export default function ConfirmParticipantPage() {
         showSuccessToast(
           "Confirmação realizada com sucesso! Você está confirmado no evento."
         );
-        // Recarregar dados para atualizar a lista
-        mutateParticipants();
-        // Resetar estado
+
+        // Resetar estado primeiro
         setStep("select");
         setSelectedParticipantId(null);
         setWhatsapp("");
         setGiftSuggestion("");
         setCode("");
+        setError("");
+
+        // Recarregar lista de participantes não confirmados
+        // Usar mutate global para garantir que todos os caches sejam atualizados
+        await globalMutate(
+          (key: any) =>
+            typeof key === "string" &&
+            key.includes(`/api/events/${eventUUID}/participants`),
+          undefined,
+          { revalidate: true }
+        );
       } else {
         setError("Código inválido. Tente novamente.");
         setCode("");
       }
-    } catch (error) {
+    } catch (error: any) {
       handleValidationErrors(error);
       setError("Erro ao verificar código. Tente novamente.");
       console.error(error);

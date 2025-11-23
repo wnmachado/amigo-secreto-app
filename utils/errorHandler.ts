@@ -3,8 +3,8 @@ import Swal from "sweetalert2";
 // Mapeamento de campos do backend para campos do frontend
 const fieldMapping: Record<string, string> = {
   event_date: "date",
-  min_value: "minValue",
-  max_value: "maxValue",
+  min_value: "min_value",
+  max_value: "max_value",
   organizer_email: "email",
 };
 

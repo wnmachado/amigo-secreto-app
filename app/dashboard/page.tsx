@@ -40,8 +40,8 @@ export default function DashboardPage() {
         uuid: event.uuid || event.id, // Garantir que uuid exista
         date: event.date || event.event_date,
         email: event.email || event.organizer_email,
-        min_value: event.min_value || event.minValue,
-        max_value: event.max_value || event.maxValue,
+        min_value: event.min_value || event.min_value,
+        max_value: event.max_value || event.max_value,
       }));
 
       console.log("Eventos mapeados:", eventsData);
@@ -115,8 +115,8 @@ export default function DashboardPage() {
   const handleSubmit = async (formData: {
     title: string;
     event_date: string;
-    minValue: string;
-    maxValue: string;
+    min_value: string;
+    max_value: string;
     description: string;
   }) => {
     if (!userEmail) return;
@@ -126,8 +126,8 @@ export default function DashboardPage() {
       const eventData = {
         title: formData.title,
         event_date: formData.event_date,
-        min_value: parseFloat(formData.minValue),
-        max_value: parseFloat(formData.maxValue),
+        min_value: parseFloat(formData.min_value),
+        max_value: parseFloat(formData.max_value),
         description: formData.description,
         email: userEmail, // Sempre usar o email do usuário logado
       };
