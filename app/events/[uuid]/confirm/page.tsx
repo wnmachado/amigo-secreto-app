@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
 import { OtpInput } from "@/components/ui/OtpInput";
 import api from "@/services/httpClient";
@@ -21,11 +22,13 @@ export default function ConfirmParticipantPage() {
     string | null
   >(null);
   const [whatsapp, setWhatsapp] = useState("");
+  const [giftSuggestion, setGiftSuggestion] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"select" | "whatsapp" | "verify">("select");
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
+  const [giftSuggestionError, setGiftSuggestionError] = useState("");
 
   // Buscar evento usando useFetch
   const {
@@ -90,6 +93,7 @@ export default function ConfirmParticipantPage() {
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setGiftSuggestionError("");
 
     if (!whatsapp.trim()) {
       setError("Por favor, informe seu número de WhatsApp");
@@ -102,6 +106,11 @@ export default function ConfirmParticipantPage() {
       return;
     }
 
+    if (!giftSuggestion.trim()) {
+      setGiftSuggestionError("Por favor, informe uma sugestão de presente");
+      return;
+    }
+
     if (!selectedParticipantId) {
       setError("Por favor, selecione seu nome primeiro");
       return;
@@ -110,31 +119,22 @@ export default function ConfirmParticipantPage() {
     setIsSending(true);
 
     try {
-      const response = await api
+      await api
         .post(
           `/api/events/${eventUUID}/participants/${selectedParticipantId}/send-whatsapp-code`,
           {
             whatsapp_number: cleaned,
+            gift_suggestion: giftSuggestion.trim(),
           }
         )
-        .catch(() => {
-          // Fallback para mock se endpoint não existir
-          console.log(`[MOCK] Código seria enviado para WhatsApp ${cleaned}`);
-          return {
-            data: { success: true, message: "Código enviado com sucesso!" },
-          };
+        .then(async (response) => {
+          setStep("verify");
+        })
+        .catch((error) => {
+          handleValidationErrors(error);
+          setError("Erro ao enviar código. Tente novamente.");
+          console.error(error);
         });
-
-      const result = response.data;
-
-      if (result.success) {
-        setStep("verify");
-        console.log(
-          `[MOCK] Verifique o console para ver o código enviado para ${cleaned}`
-        );
-      } else {
-        setError(result.message || "Erro ao enviar código");
-      }
     } catch (error) {
       handleValidationErrors(error);
       setError("Erro ao enviar código. Tente novamente.");
@@ -173,6 +173,7 @@ export default function ConfirmParticipantPage() {
             {
               confirmed: true,
               whatsapp_number: cleaned,
+              gift_suggestion: giftSuggestion.trim(),
             }
           );
           return { data: { success: true } };
@@ -190,6 +191,7 @@ export default function ConfirmParticipantPage() {
         setStep("select");
         setSelectedParticipantId(null);
         setWhatsapp("");
+        setGiftSuggestion("");
         setCode("");
       } else {
         setError("Código inválido. Tente novamente.");
@@ -326,6 +328,19 @@ export default function ConfirmParticipantPage() {
                   required
                 />
 
+                <Textarea
+                  label="Sugestão de presente"
+                  value={giftSuggestion}
+                  onChange={(e) => {
+                    setGiftSuggestion(e.target.value);
+                    if (giftSuggestionError) setGiftSuggestionError("");
+                  }}
+                  error={giftSuggestionError}
+                  placeholder="Ex: Um livro, uma camiseta, um perfume..."
+                  rows={4}
+                  required
+                />
+
                 <div className="flex gap-3">
                   <Button
                     type="button"
@@ -333,6 +348,7 @@ export default function ConfirmParticipantPage() {
                     onClick={() => {
                       setStep("select");
                       setWhatsapp("");
+                      setGiftSuggestion("");
                       setError("");
                     }}
                     className="flex-1"
@@ -367,11 +383,6 @@ export default function ConfirmParticipantPage() {
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
                   Por favor, verifique seu WhatsApp e informe o código abaixo.
-                </p>
-                <p className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded mb-4">
-                  💡 <strong>Nota:</strong> Em modo de desenvolvimento,
-                  verifique o console do navegador (F12) para ver o código
-                  gerado.
                 </p>
               </div>
 
