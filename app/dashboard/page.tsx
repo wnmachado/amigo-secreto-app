@@ -201,72 +201,80 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
-              <Card
-                key={event.uuid}
-                className="hover:shadow-lg transition-shadow"
-              >
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                      {event.title}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(event.date)}
-                    </p>
-                  </div>
+            {events.map((event) => {
+              const confirmedCount = event.confirmed_participants_count ?? 0;
+              const drawCount = event.draw_results_count ?? 0;
 
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Valor:</span>
-                      <span className="font-medium">
-                        {formatCurrency(event.min_value)} -{" "}
-                        {formatCurrency(event.max_value)}
-                      </span>
+              let statusLabel = "Em preparação";
+              let statusColor = "text-yellow-600";
+
+              if (drawCount > 0) {
+                statusLabel = "Sorteio realizado";
+                statusColor = "text-green-600";
+              } else if (confirmedCount > 0) {
+                statusLabel = "Presença confirmada";
+                statusColor = "text-blue-600";
+              }
+
+              return (
+                <Card
+                  key={event.uuid}
+                  className="hover:shadow-lg transition-shadow"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                        {event.title}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(event.date)}
+                      </p>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <span
-                        className={`font-medium ${
-                          event.drawPerformed
-                            ? "text-green-600"
-                            : "text-yellow-600"
-                        }`}
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Valor:</span>
+                        <span className="font-medium">
+                          {formatCurrency(event.min_value)} -{" "}
+                          {formatCurrency(event.max_value)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`font-medium ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => router.push(`/events/${event.uuid}`)}
+                        className="flex-1"
                       >
-                        {event.drawPerformed
-                          ? "Sorteio concluído"
-                          : "Em preparação"}
-                      </span>
+                        Gerenciar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleEdit(event)}
+                        className="px-3"
+                        title="Editar evento"
+                      >
+                        ✏️
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleDelete(event)}
+                        className="px-3"
+                        title="Excluir evento"
+                      >
+                        🗑️
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => router.push(`/events/${event.uuid}`)}
-                      className="flex-1"
-                    >
-                      Gerenciar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleEdit(event)}
-                      className="px-3"
-                      title="Editar evento"
-                    >
-                      ✏️
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={() => handleDelete(event)}
-                      className="px-3"
-                      title="Excluir evento"
-                    >
-                      🗑️
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

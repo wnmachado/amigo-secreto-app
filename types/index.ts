@@ -8,7 +8,11 @@ export interface Event {
   email: string;
   drawPerformed: boolean;
   drawDate?: string;
-  pairs?: SecretFriendPair[];
+  secret_friend_pairs?: SecretFriendPair[];
+  draw_results_count: number;
+  status?: string;
+  participants_count?: number;
+  confirmed_participants_count?: number;
 }
 
 export interface Participant {
@@ -22,10 +26,14 @@ export interface Participant {
 }
 
 export interface SecretFriendPair {
-  participantId: string;
-  participantName: string;
-  secretFriendId: string;
-  secretFriendName: string;
+  id: number;
+  event_id: number;
+  giver_participant_id: number;
+  receiver_participant_id: number;
+  created_at: Date;
+  updated_at: Date;
+  giver: Participant;
+  receiver: Participant;
 }
 
 export interface User {

@@ -39,11 +39,9 @@ export default function EventDetailsPage() {
   });
 
   // Buscar participantes usando useFetch
-  const {
-    data: participantsData,
-    isLoading: isLoadingParticipants,
-    error: participantsError,
-  } = useFetch<Participant[]>({
+  const { data: participantsData, isLoading: isLoadingParticipants } = useFetch<
+    Participant[]
+  >({
     url: `/api/events/${eventUUID}/participants`,
   });
 
@@ -57,12 +55,46 @@ export default function EventDetailsPage() {
   const event = useMemo(() => {
     if (!eventData) return null;
 
+    const rawPairs =
+      (eventData as any).secret_friend_pairs || (eventData as any).pairs || [];
+
+    const mappedPairs: SecretFriendPair[] = Array.isArray(rawPairs)
+      ? rawPairs.map((pair: any) => ({
+          ...pair,
+          giver: pair.giver || pair.participant_giver || pair.giverParticipant,
+          receiver:
+            pair.receiver ||
+            pair.participant_receiver ||
+            pair.receiverParticipant,
+        }))
+      : [];
+
+    const drawResultsCount =
+      eventData.draw_results_count ?? mappedPairs.length ?? 0;
+
+    const drawPerformed =
+      (!eventData.draw_results_count && drawResultsCount > 0) ??
+      ((eventData as any).status === "draw_done" || drawResultsCount > 0);
+
+    const drawDate =
+      eventData.drawDate ||
+      (eventData as any).draw_date ||
+      (drawPerformed ? (eventData as any).updated_at : undefined);
+
     return {
       ...eventData,
       uuid: eventData.uuid || (eventData as any).id,
       date: eventData.date || (eventData as any).event_date,
-      min_value: eventData.min_value || (eventData as any).min_value,
-      max_value: eventData.max_value || (eventData as any).max_value,
+      min_value: Number(
+        eventData.min_value || (eventData as any).min_value || 0
+      ),
+      max_value: Number(
+        eventData.max_value || (eventData as any).max_value || 0
+      ),
+      drawPerformed,
+      drawDate,
+      secret_friend_pairs: mappedPairs,
+      draw_results_count: drawResultsCount,
     } as Event;
   }, [eventData]);
 
@@ -75,7 +107,7 @@ export default function EventDetailsPage() {
 
   // Processar pares do sorteio
   const pairs = useMemo(() => {
-    return event?.pairs || [];
+    return event?.secret_friend_pairs || [];
   }, [event]);
 
   const isLoading = isLoadingEvent || isLoadingParticipants;
@@ -169,6 +201,24 @@ export default function EventDetailsPage() {
     }
   };
 
+  const handleRemoveParticipant = async (participantId: string) => {
+    const confirmRemoval = window.confirm(
+      "Tem certeza que deseja remover este participante?"
+    );
+    if (!confirmRemoval) return;
+
+    try {
+      await api.delete(
+        `/api/events/${eventUUID}/participants/${participantId}`
+      );
+      showSuccessToast("Participante removido com sucesso!");
+      mutateParticipants();
+    } catch (error) {
+      handleValidationErrors(error);
+      console.error(error);
+    }
+  };
+
   if (!isAuthenticated || isLoading || !event) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -180,6 +230,12 @@ export default function EventDetailsPage() {
   const confirmed = participants.filter(
     (p: Participant) => p.is_confirmed
   ).length;
+  const totalParticipants = participants.length;
+  const canPerformDraw =
+    totalParticipants >= 2 && confirmed === totalParticipants;
+  const eventDateObj = new Date(event.date);
+  const canShowResults =
+    event.draw_results_count && eventDateObj.getTime() <= Date.now();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -245,25 +301,36 @@ export default function EventDetailsPage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">Status do sorteio</h3>
               <p className="text-gray-600">
-                {event.drawPerformed
+                {event.draw_results_count
                   ? `Sorteio realizado em ${
-                      event.drawDate
-                        ? formatDate(event.drawDate)
+                      event.secret_friend_pairs &&
+                      event.secret_friend_pairs.length > 0
+                        ? formatDate(
+                            new Date(
+                              event.secret_friend_pairs[0].created_at
+                            ).toISOString()
+                          )
                         : "data não informada"
                     }`
                   : "Ainda não realizado"}
               </p>
             </div>
-            {!event.drawPerformed && (
+            {!event.draw_results_count && (
               <Button
                 variant="primary"
                 onClick={() => setShowDrawModal(true)}
-                disabled={confirmed < 2}
+                disabled={!canPerformDraw}
               >
                 Realizar sorteio
               </Button>
             )}
           </div>
+          {!event.draw_results_count && !canPerformDraw && (
+            <p className="text-sm text-yellow-600 mt-2">
+              Todos os participantes precisam confirmar presença para liberar o
+              sorteio.
+            </p>
+          )}
         </Card>
 
         {/* Cadastro de participantes */}
@@ -326,6 +393,9 @@ export default function EventDetailsPage() {
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">
                       Confirmado
                     </th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -349,6 +419,17 @@ export default function EventDetailsPage() {
                           <span className="text-gray-400">Pendente</span>
                         )}
                       </td>
+                      <td className="py-3 px-4 text-center">
+                        <Button
+                          variant="danger"
+                          className="px-3 py-1 text-sm"
+                          onClick={() =>
+                            handleRemoveParticipant(participant.id)
+                          }
+                        >
+                          Remover
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -358,31 +439,41 @@ export default function EventDetailsPage() {
         </Card>
 
         {/* Resultado do sorteio */}
-        {event.drawPerformed && pairs.length > 0 && (
-          <Card className="mt-6">
-            <h3 className="text-lg font-semibold mb-4">Resultado do sorteio</h3>
-            <div className="space-y-3">
-              {pairs.map((pair, index) => (
-                <div
-                  key={index}
-                  className="bg-blue-50 p-4 rounded-lg border border-blue-200"
-                >
-                  <p className="font-medium text-gray-900">
-                    <span className="text-blue-600">
-                      {pair.participantName}
-                    </span>
-                    {" → tirou → "}
-                    <span className="text-blue-600">
-                      {pair.secretFriendName}
-                    </span>
-                  </p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-sm text-gray-500">
-              💡 <strong>Nota:</strong> Em produção, os participantes receberiam
-              automaticamente uma mensagem no WhatsApp com o nome do seu amigo
-              secreto.
+        {canShowResults &&
+          event.secret_friend_pairs &&
+          event.secret_friend_pairs.length > 0 && (
+            <Card className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">
+                Resultado do sorteio
+              </h3>
+              <div className="space-y-3">
+                {event.secret_friend_pairs.map((pair, index) => (
+                  <div
+                    key={index}
+                    className="bg-blue-50 p-4 rounded-lg border border-blue-200"
+                  >
+                    <p className="font-medium text-gray-900">
+                      <span className="text-blue-600">{pair.giver.name}</span>
+                      {" → tirou → "}
+                      <span className="text-blue-600">
+                        {pair.receiver.name}
+                      </span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-gray-500">
+                💡 <strong>Nota:</strong> Em produção, os participantes
+                receberiam automaticamente uma mensagem no WhatsApp com o nome
+                do seu amigo secreto.
+              </p>
+            </Card>
+          )}
+        {!canShowResults && event.draw_results_count && (
+          <Card className="mt-6 bg-yellow-50 border border-yellow-200">
+            <p className="text-sm text-yellow-800">
+              Os resultados do sorteio ficarão disponíveis a partir da data do
+              evento.
             </p>
           </Card>
         )}
@@ -402,7 +493,11 @@ export default function EventDetailsPage() {
             >
               Cancelar
             </Button>
-            <Button onClick={handlePerformDraw} isLoading={isDrawing}>
+            <Button
+              onClick={handlePerformDraw}
+              isLoading={isDrawing}
+              disabled={!canPerformDraw || isDrawing}
+            >
               Confirmar e realizar sorteio
             </Button>
           </>
@@ -418,9 +513,9 @@ export default function EventDetailsPage() {
           <strong>Participantes confirmados:</strong> {confirmed} de{" "}
           {participants.length}
         </p>
-        {confirmed < 2 && (
+        {confirmed !== totalParticipants && (
           <p className="text-red-600 text-sm mt-2">
-            ⚠️ É necessário pelo menos 2 participantes confirmados para realizar
+            ⚠️ Todos os participantes precisam confirmar presença para realizar
             o sorteio.
           </p>
         )}
