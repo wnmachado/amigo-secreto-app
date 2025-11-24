@@ -15,7 +15,6 @@ export default function Home() {
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
 
-  // Redirecionar para dashboard se já estiver autenticado
   useEffect(() => {
     if (isAuthenticated) {
       router.push("/dashboard");
@@ -67,7 +66,6 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // Criar evento
       await api.post("/api/events", {
         title: formData.title,
         event_date: formData.event_date,
@@ -77,7 +75,6 @@ export default function Home() {
         email: formData.email,
       });
 
-      // Enviar código
       await api.post("/api/auth/request-code", {
         email: formData.email,
       });
@@ -124,7 +121,6 @@ export default function Home() {
     }
   };
 
-  // Não renderizar se estiver autenticado (será redirecionado)
   if (isAuthenticated) {
     return null;
   }

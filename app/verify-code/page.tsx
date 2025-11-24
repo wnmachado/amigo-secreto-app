@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -9,7 +9,7 @@ import api from '@/services/httpClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { handleValidationErrors, showSuccessToast } from '@/utils/errorHandler';
 
-export default function VerifyCodePage() {
+function VerifyCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -135,5 +135,19 @@ export default function VerifyCodePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function VerifyCodePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 text-gray-600">
+          Carregando...
+        </div>
+      }
+    >
+      <VerifyCodeContent />
+    </Suspense>
   );
 }

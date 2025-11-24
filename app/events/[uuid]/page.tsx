@@ -5,7 +5,6 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { Switch } from "@/components/ui/Switch";
 import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/httpClient";
@@ -29,7 +28,6 @@ export default function EventDetailsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Buscar evento usando useFetch
   const {
     data: eventData,
     isLoading: isLoadingEvent,
@@ -38,20 +36,17 @@ export default function EventDetailsPage() {
     url: `/api/events/${eventUUID}`,
   });
 
-  // Buscar participantes usando useFetch
   const { data: participantsData, isLoading: isLoadingParticipants } = useFetch<
     Participant[]
   >({
     url: `/api/events/${eventUUID}/participants`,
   });
 
-  // Mutate para recarregar dados
   const { mutate: mutateEvent } = useSWR(`/api/events/${eventUUID}`);
   const { mutate: mutateParticipants } = useSWR(
     `/api/events/${eventUUID}/participants`
   );
 
-  // Mapear e processar dados do evento
   const event = useMemo(() => {
     if (!eventData) return null;
 

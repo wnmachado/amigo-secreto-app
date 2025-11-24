@@ -25,30 +25,24 @@ export default function DashboardPage() {
     setIsLoading(true);
     try {
       const response = await api.get("/api/events");
-      console.log("Resposta da API:", response.data);
 
-      // Garantir que sempre seja um array
       let eventsData = Array.isArray(response.data)
         ? response.data
         : response.data?.data || [];
 
-      console.log("Eventos processados:", eventsData);
-
-      // Mapear campos do backend para o frontend
       eventsData = eventsData.map((event: any) => ({
         ...event,
-        uuid: event.uuid || event.id, // Garantir que uuid exista
+        uuid: event.uuid || event.id,
         date: event.date || event.event_date,
         email: event.email || event.organizer_email,
         min_value: event.min_value || event.min_value,
         max_value: event.max_value || event.max_value,
       }));
 
-      console.log("Eventos mapeados:", eventsData);
       setEvents(eventsData);
     } catch (error) {
       console.error("Erro ao carregar eventos:", error);
-      setEvents([]); // Garantir que seja um array vazio em caso de erro
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
@@ -129,15 +123,13 @@ export default function DashboardPage() {
         min_value: parseFloat(formData.min_value),
         max_value: parseFloat(formData.max_value),
         description: formData.description,
-        email: userEmail, // Sempre usar o email do usuário logado
+        email: userEmail,
       };
 
       if (editingEvent?.uuid) {
-        // Editar evento existente (PUT)
         await api.put(`/api/events/${editingEvent.uuid}`, eventData);
         showSuccessToast("Evento atualizado com sucesso!");
       } else {
-        // Criar novo evento (POST)
         await api.post("/api/events", eventData);
         showSuccessToast("Evento criado com sucesso!");
       }

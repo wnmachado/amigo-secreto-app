@@ -1,186 +1,210 @@
-// Serviço de armazenamento simulado usando localStorage
-// TODO: Substituir por chamadas reais à API quando o backend estiver disponível
+// Serviço de armazenamento local para uso em ambientes sem backend.
+// Mantido para retrocompatibilidade com o fluxo de mocks legado.
 
-import { Evento, Participante, Usuario } from '@/types';
+import type { Event, Participant, User } from "@/types";
 
-const STORAGE_KEYS = {
-  EVENTOS: 'amigo_secreto_eventos',
-  PARTICIPANTES: 'amigo_secreto_participantes',
-  USUARIOS: 'amigo_secreto_usuarios',
-  CODIGOS: 'amigo_secreto_codigos',
-  CODIGOS_WHATSAPP: 'amigo_secreto_codigos_whatsapp',
+type Evento = Event & {
+  id: string;
+  emailOrganizador?: string;
+  sorteioRealizado?: boolean;
 };
 
-// Gerenciamento de eventos
+type Participante = Participant & {
+  id: string;
+  eventoId: string;
+  confirmado?: boolean;
+  whatsapp?: string;
+};
+
+type Usuario = User & {
+  senha?: string;
+};
+
+const STORAGE_KEYS = {
+  EVENTOS: "amigo_secreto_eventos",
+  PARTICIPANTES: "amigo_secreto_participantes",
+  USUARIOS: "amigo_secreto_usuarios",
+  CODIGOS: "amigo_secreto_codigos",
+  CODIGOS_WHATSAPP: "amigo_secreto_codigos_whatsapp",
+};
+
+const isBrowser = typeof window !== "undefined";
+
+function readStorage<T>(key: string, fallback: T): T {
+  if (!isBrowser) return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage<T>(key: string, value: T) {
+  if (!isBrowser) return;
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
 export const eventosStorage = {
-  getAll: (): Evento[] => {
-    if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(STORAGE_KEYS.EVENTOS);
-    return data ? JSON.parse(data) : [];
+  getAll(): Evento[] {
+    return readStorage<Evento[]>(STORAGE_KEYS.EVENTOS, []);
   },
 
-  getByEmail: (email: string): Evento[] => {
-    const eventos = eventosStorage.getAll();
-    return eventos.filter(e => e.emailOrganizador === email);
+  getByEmail(email: string): Evento[] {
+    return this.getAll().filter((evento) => evento.email === email);
   },
 
-  getById: (id: string): Evento | null => {
-    const eventos = eventosStorage.getAll();
-    return eventos.find(e => e.id === id) || null;
+  getById(id: string): Evento | null {
+    return this.getAll().find((evento) => evento.id === id) ?? null;
   },
 
-  create: (evento: Omit<Evento, 'id' | 'sorteioRealizado'>): Evento => {
-    const eventos = eventosStorage.getAll();
+  create(evento: Omit<Evento, "id" | "sorteioRealizado">): Evento {
+    const eventos = this.getAll();
     const novoEvento: Evento = {
       ...evento,
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       sorteioRealizado: false,
     };
     eventos.push(novoEvento);
-    localStorage.setItem(STORAGE_KEYS.EVENTOS, JSON.stringify(eventos));
+    writeStorage(STORAGE_KEYS.EVENTOS, eventos);
     return novoEvento;
   },
 
-  update: (id: string, updates: Partial<Evento>): Evento | null => {
-    const eventos = eventosStorage.getAll();
-    const index = eventos.findIndex(e => e.id === id);
+  update(id: string, updates: Partial<Evento>): Evento | null {
+    const eventos = this.getAll();
+    const index = eventos.findIndex((evento) => evento.id === id);
     if (index === -1) return null;
     eventos[index] = { ...eventos[index], ...updates };
-    localStorage.setItem(STORAGE_KEYS.EVENTOS, JSON.stringify(eventos));
+    writeStorage(STORAGE_KEYS.EVENTOS, eventos);
     return eventos[index];
   },
 };
 
-// Gerenciamento de participantes
 export const participantesStorage = {
-  getAll: (): Participante[] => {
-    if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(STORAGE_KEYS.PARTICIPANTES);
-    return data ? JSON.parse(data) : [];
+  getAll(): Participante[] {
+    return readStorage<Participante[]>(STORAGE_KEYS.PARTICIPANTES, []);
   },
 
-  getByEventoId: (eventoId: string): Participante[] => {
-    const participantes = participantesStorage.getAll();
-    return participantes.filter(p => p.eventoId === eventoId);
+  getByEventoId(eventoId: string): Participante[] {
+    return this.getAll().filter(
+      (participante) => participante.eventoId === eventoId
+    );
   },
 
-  getById: (id: string): Participante | null => {
-    const participantes = participantesStorage.getAll();
-    return participantes.find(p => p.id === id) || null;
+  getById(id: string): Participante | null {
+    return this.getAll().find((participante) => participante.id === id) ?? null;
   },
 
-  create: (participante: Omit<Participante, 'id' | 'confirmado'>): Participante => {
-    const participantes = participantesStorage.getAll();
+  create(participante: Omit<Participante, "id" | "confirmado">): Participante {
+    const participantes = this.getAll();
     const novoParticipante: Participante = {
       ...participante,
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       confirmado: false,
     };
     participantes.push(novoParticipante);
-    localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(participantes));
+    writeStorage(STORAGE_KEYS.PARTICIPANTES, participantes);
     return novoParticipante;
   },
 
-  update: (id: string, updates: Partial<Participante>): Participante | null => {
-    const participantes = participantesStorage.getAll();
-    const index = participantes.findIndex(p => p.id === id);
+  update(id: string, updates: Partial<Participante>): Participante | null {
+    const participantes = this.getAll();
+    const index = participantes.findIndex(
+      (participante) => participante.id === id
+    );
     if (index === -1) return null;
     participantes[index] = { ...participantes[index], ...updates };
-    localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(participantes));
+    writeStorage(STORAGE_KEYS.PARTICIPANTES, participantes);
     return participantes[index];
   },
 
-  delete: (id: string): boolean => {
-    const participantes = participantesStorage.getAll();
-    const filtered = participantes.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEYS.PARTICIPANTES, JSON.stringify(filtered));
-    return filtered.length < participantes.length;
+  delete(id: string): boolean {
+    const participantes = this.getAll();
+    const filtrados = participantes.filter(
+      (participante) => participante.id !== id
+    );
+    writeStorage(STORAGE_KEYS.PARTICIPANTES, filtrados);
+    return filtrados.length !== participantes.length;
   },
 };
 
-// Gerenciamento de códigos de verificação
-export const codigosStorage = {
-  generate: (email: string): string => {
-    // Gera código de 6 dígitos
-    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
-    if (typeof window === 'undefined') return codigo;
+type CodigoEmail = {
+  codigo: string;
+  timestamp: number;
+  usado: boolean;
+};
 
-    const codigos = codigosStorage.getAll();
-    codigos[email] = {
-      codigo,
-      timestamp: Date.now(),
-      usado: false,
-    };
-    localStorage.setItem(STORAGE_KEYS.CODIGOS, JSON.stringify(codigos));
+type CodigoWhatsapp = CodigoEmail & {
+  participanteId: string;
+};
+
+export const codigosStorage = {
+  generate(email: string): string {
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    if (!isBrowser) return codigo;
+    const codigos = readStorage<Record<string, CodigoEmail>>(
+      STORAGE_KEYS.CODIGOS,
+      {}
+    );
+    codigos[email] = { codigo, timestamp: Date.now(), usado: false };
+    writeStorage(STORAGE_KEYS.CODIGOS, codigos);
     return codigo;
   },
 
-  getAll: (): Record<string, { codigo: string; timestamp: number; usado: boolean }> => {
-    if (typeof window === 'undefined') return {};
-    const data = localStorage.getItem(STORAGE_KEYS.CODIGOS);
-    return data ? JSON.parse(data) : {};
-  },
-
-  validate: (email: string, codigo: string): boolean => {
-    const codigos = codigosStorage.getAll();
-    const codigoData = codigos[email];
-
-    if (!codigoData || codigoData.usado) return false;
-
-    // Código expira em 10 minutos
-    const expirado = Date.now() - codigoData.timestamp > 10 * 60 * 1000;
+  validate(email: string, codigo: string): boolean {
+    const codigos = readStorage<Record<string, CodigoEmail>>(
+      STORAGE_KEYS.CODIGOS,
+      {}
+    );
+    const registro = codigos[email];
+    if (!registro || registro.usado) return false;
+    const expirado = Date.now() - registro.timestamp > 10 * 60 * 1000;
     if (expirado) return false;
-
-    if (codigoData.codigo === codigo) {
-      codigoData.usado = true;
-      localStorage.setItem(STORAGE_KEYS.CODIGOS, JSON.stringify(codigos));
-      return true;
+    const valido = registro.codigo === codigo;
+    if (valido) {
+      registro.usado = true;
+      writeStorage(STORAGE_KEYS.CODIGOS, codigos);
     }
-
-    return false;
+    return valido;
   },
 };
 
-// Gerenciamento de códigos de verificação via WhatsApp
 export const codigosWhatsAppStorage = {
-  generate: (whatsapp: string, participanteId: string): string => {
-    // Gera código de 6 dígitos
+  generate(whatsapp: string, participanteId: string): string {
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
-    if (typeof window === 'undefined') return codigo;
-
-    const codigos = codigosWhatsAppStorage.getAll();
+    if (!isBrowser) return codigo;
+    const codigos = readStorage<Record<string, CodigoWhatsapp>>(
+      STORAGE_KEYS.CODIGOS_WHATSAPP,
+      {}
+    );
     codigos[whatsapp] = {
       codigo,
       timestamp: Date.now(),
       usado: false,
       participanteId,
     };
-    localStorage.setItem(STORAGE_KEYS.CODIGOS_WHATSAPP, JSON.stringify(codigos));
+    writeStorage(STORAGE_KEYS.CODIGOS_WHATSAPP, codigos);
     return codigo;
   },
 
-  getAll: (): Record<string, { codigo: string; timestamp: number; usado: boolean; participanteId: string }> => {
-    if (typeof window === 'undefined') return {};
-    const data = localStorage.getItem(STORAGE_KEYS.CODIGOS_WHATSAPP);
-    return data ? JSON.parse(data) : {};
-  },
-
-  validate: (whatsapp: string, codigo: string): { success: boolean; participanteId?: string } => {
-    const codigos = codigosWhatsAppStorage.getAll();
-    const codigoData = codigos[whatsapp];
-
-    if (!codigoData || codigoData.usado) return { success: false };
-
-    // Código expira em 10 minutos
-    const expirado = Date.now() - codigoData.timestamp > 10 * 60 * 1000;
+  validate(
+    whatsapp: string,
+    codigo: string
+  ): { success: boolean; participanteId?: string } {
+    const codigos = readStorage<Record<string, CodigoWhatsapp>>(
+      STORAGE_KEYS.CODIGOS_WHATSAPP,
+      {}
+    );
+    const registro = codigos[whatsapp];
+    if (!registro || registro.usado) return { success: false };
+    const expirado = Date.now() - registro.timestamp > 10 * 60 * 1000;
     if (expirado) return { success: false };
-
-    if (codigoData.codigo === codigo) {
-      codigoData.usado = true;
-      localStorage.setItem(STORAGE_KEYS.CODIGOS_WHATSAPP, JSON.stringify(codigos));
-      return { success: true, participanteId: codigoData.participanteId };
+    const valido = registro.codigo === codigo;
+    if (valido) {
+      registro.usado = true;
+      writeStorage(STORAGE_KEYS.CODIGOS_WHATSAPP, codigos);
+      return { success: true, participanteId: registro.participanteId };
     }
-
     return { success: false };
   },
 };

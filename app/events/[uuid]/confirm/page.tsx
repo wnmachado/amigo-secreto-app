@@ -162,9 +162,6 @@ export default function ConfirmParticipantPage() {
           { whatsapp_number: cleaned, code: inputCode }
         )
         .catch(async (error) => {
-          // Fallback para mock se endpoint não existir
-          console.log(`[MOCK] Verificação de código para WhatsApp ${cleaned}`);
-          // Atualizar participante como confirmado
           await api.put(
             `/api/events/${eventUUID}/participants/${selectedParticipantId}`,
             {
@@ -173,7 +170,6 @@ export default function ConfirmParticipantPage() {
               gift_suggestion: giftSuggestion.trim(),
             }
           );
-          // Recarregar lista após atualizar no fallback
           await globalMutate(
             (key: any) =>
               typeof key === "string" &&
@@ -442,9 +438,7 @@ export default function ConfirmParticipantPage() {
                             { whatsapp: cleaned }
                           )
                           .catch(() => {
-                            console.log(
-                              `[MOCK] Código seria reenviado para WhatsApp ${cleaned}`
-                            );
+                            //
                           });
                         showSuccessToast("Código reenviado!");
                       } catch (error) {
