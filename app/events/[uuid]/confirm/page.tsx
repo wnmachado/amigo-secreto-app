@@ -36,21 +36,16 @@ export default function ConfirmParticipantPage() {
     isLoading: isLoadingEvent,
     error: eventError,
   } = useFetch<Event>({
-    url: `/api/events/${eventUUID}`,
+    url: `/api/events/${eventUUID}/confirmed`,
   });
 
   // Buscar participantes não confirmados usando useFetch
   const { data: participantsData, isLoading: isLoadingParticipants } = useFetch<
     Participant[]
   >({
-    url: `/api/events/${eventUUID}/participants`,
+    url: `/api/events/${eventUUID}/confirmed/participants`,
     params: { confirmed: false },
   });
-
-  // Mutate para recarregar dados - usar a mesma chave que o useFetch usa
-  // O useFetch usa a URL como chave do SWR internamente
-  const participantsKey = `/api/events/${eventUUID}/participants`;
-  const { mutate: mutateParticipants } = useSWR(participantsKey);
 
   // Mapear e processar dados do evento
   const event = useMemo(() => {
@@ -118,7 +113,7 @@ export default function ConfirmParticipantPage() {
     try {
       await api
         .post(
-          `/api/events/${eventUUID}/participants/${selectedParticipantId}/send-whatsapp-code`,
+          `/api/events/${eventUUID}/confirmed/participants/${selectedParticipantId}/send-whatsapp-code`,
           {
             whatsapp_number: cleaned,
             gift_suggestion: giftSuggestion.trim(),
@@ -158,22 +153,14 @@ export default function ConfirmParticipantPage() {
     try {
       const response = await api
         .post(
-          `/api/events/${eventUUID}/participants/${selectedParticipantId}/verify-whatsapp-code`,
+          `/api/events/${eventUUID}/confirmed/participants/${selectedParticipantId}/verify-whatsapp-code`,
           { whatsapp_number: cleaned, code: inputCode }
         )
         .catch(async (error) => {
-          await api.put(
-            `/api/events/${eventUUID}/participants/${selectedParticipantId}`,
-            {
-              confirmed: true,
-              whatsapp_number: cleaned,
-              gift_suggestion: giftSuggestion.trim(),
-            }
-          );
           await globalMutate(
             (key: any) =>
               typeof key === "string" &&
-              key.includes(`/api/events/${eventUUID}/participants`),
+              key.includes(`/api/events/${eventUUID}/confirmed/participants`),
             undefined,
             { revalidate: true }
           );
@@ -200,7 +187,7 @@ export default function ConfirmParticipantPage() {
         await globalMutate(
           (key: any) =>
             typeof key === "string" &&
-            key.includes(`/api/events/${eventUUID}/participants`),
+            key.includes(`/api/events/${eventUUID}/confirmed/participants`),
           undefined,
           { revalidate: true }
         );

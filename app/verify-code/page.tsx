@@ -1,35 +1,44 @@
-'use client';
+"use client";
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { OtpInput } from '@/components/ui/OtpInput';
-import api from '@/services/httpClient';
-import { useAuth } from '@/contexts/AuthContext';
-import { handleValidationErrors, showSuccessToast } from '@/utils/errorHandler';
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { OtpInput } from "@/components/ui/OtpInput";
+import api from "@/services/httpClient";
+import { useAuth } from "@/contexts/AuthContext";
+import { handleValidationErrors, showSuccessToast } from "@/utils/errorHandler";
 
 function VerifyCodeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
-    const emailParam = searchParams.get('email');
+    const emailParam = searchParams.get("email");
     if (emailParam) {
       setEmail(emailParam);
-    } else {
-      router.push('/login');
+      setEmailError("");
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const handleComplete = async (inputCode: string) => {
     setCode(inputCode);
-    setError('');
+    setError("");
+    setEmailError("");
+
+    if (!email) {
+      setEmailError(
+        "Por favor, informe seu e-mail antes de confirmar o código."
+      );
+      return;
+    }
 
     if (inputCode.length !== 6) return;
 
@@ -37,6 +46,11 @@ function VerifyCodeContent() {
   };
 
   const verifyCode = async (codeToVerify: string) => {
+    if (!email) {
+      setEmailError("Informe seu e-mail para validar o código.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -51,15 +65,15 @@ function VerifyCodeContent() {
           localStorage.setItem("amigo_secreto_token", token);
         }
         login(email, token);
-        router.push('/dashboard');
+        router.push("/dashboard");
       } else {
-        setError('Código inválido. Tente novamente.');
-        setCode('');
+        setError("Código inválido. Tente novamente.");
+        setCode("");
       }
     } catch (error) {
       handleValidationErrors(error);
-      setError('Código inválido. Tente novamente.');
-      setCode('');
+      setError("Código inválido. Tente novamente.");
+      setCode("");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -67,23 +81,25 @@ function VerifyCodeContent() {
   };
 
   const handleResend = async () => {
+    if (!email) {
+      setEmailError("Informe seu e-mail para reenviar o código.");
+      return;
+    }
+
     setIsLoading(true);
-    setError('');
+    setError("");
+    setEmailError("");
 
     try {
       await api.post("/api/auth/request-code", { email });
-      showSuccessToast('Código reenviado com sucesso!');
+      showSuccessToast("Código reenviado com sucesso!");
     } catch (error) {
       handleValidationErrors(error);
-      setError('Erro ao reenviar código. Tente novamente.');
+      setError("Erro ao reenviar código. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (!email) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
@@ -93,17 +109,32 @@ function VerifyCodeContent() {
             Informe o código de 6 dígitos
           </h1>
           <p className="text-gray-600">
-            Enviamos um código para <strong>{email}</strong>
+            {email ? (
+              <>
+                Enviamos um código para <strong>{email}</strong>
+              </>
+            ) : (
+              "Informe seu e-mail para receber e validar o código."
+            )}
           </p>
         </div>
 
         <Card>
           <div className="space-y-6">
-            <OtpInput
-              length={6}
-              onComplete={handleComplete}
-              error={error}
+            <Input
+              type="email"
+              label="E-mail"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError("");
+              }}
+              error={emailError}
+              placeholder="seu@email.com"
+              required
             />
+
+            <OtpInput length={6} onComplete={handleComplete} error={error} />
 
             <div className="flex flex-col gap-3">
               <Button
@@ -124,7 +155,7 @@ function VerifyCodeContent() {
                   Reenviar código
                 </button>
                 <button
-                  onClick={() => router.push('/login')}
+                  onClick={() => router.push("/login")}
                   className="text-gray-600 hover:text-gray-700 font-medium flex-1"
                 >
                   Trocar e-mail

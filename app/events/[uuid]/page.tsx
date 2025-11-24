@@ -9,7 +9,11 @@ import { Modal } from "@/components/ui/Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/httpClient";
 import { Event, Participant, SecretFriendPair } from "@/types";
-import { handleValidationErrors, showSuccessToast } from "@/utils/errorHandler";
+import {
+  handleValidationErrors,
+  showInfoToast,
+  showSuccessToast,
+} from "@/utils/errorHandler";
 import useFetch from "@/hooks/useFetch";
 import useSWR from "swr";
 
@@ -143,6 +147,11 @@ export default function EventDetailsPage() {
     e.preventDefault();
     setErrors({});
 
+    if (event?.drawPerformed) {
+      showInfoToast("Não é possível adicionar participantes após o sorteio.");
+      return;
+    }
+
     if (!newParticipant.name.trim()) {
       setErrors({ name: "Nome é obrigatório" });
       return;
@@ -169,6 +178,13 @@ export default function EventDetailsPage() {
     participantId: string,
     confirmed: boolean
   ) => {
+    if (event?.drawPerformed) {
+      showInfoToast(
+        "Não é possível alterar a confirmação após a realização do sorteio."
+      );
+      return;
+    }
+
     try {
       await api.put(`/api/events/${eventUUID}/participants/${participantId}`, {
         confirmed: confirmed,
@@ -197,6 +213,11 @@ export default function EventDetailsPage() {
   };
 
   const handleRemoveParticipant = async (participantId: string) => {
+    if (event?.drawPerformed) {
+      showInfoToast("Não é possível remover participantes após o sorteio.");
+      return;
+    }
+
     const confirmRemoval = window.confirm(
       "Tem certeza que deseja remover este participante?"
     );
@@ -229,8 +250,8 @@ export default function EventDetailsPage() {
   const canPerformDraw =
     totalParticipants >= 2 && confirmed === totalParticipants;
   const eventDateObj = new Date(event.date);
-  const canShowResults =
-    event.draw_results_count && eventDateObj.getTime() <= Date.now();
+  const isDrawn = !!event.drawPerformed;
+  const canShowResults = isDrawn && eventDateObj.getTime() <= Date.now();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -296,7 +317,7 @@ export default function EventDetailsPage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">Status do sorteio</h3>
               <p className="text-gray-600">
-                {event.draw_results_count
+                {isDrawn
                   ? `Sorteio realizado em ${
                       event.secret_friend_pairs &&
                       event.secret_friend_pairs.length > 0
@@ -305,12 +326,14 @@ export default function EventDetailsPage() {
                               event.secret_friend_pairs[0].created_at
                             ).toISOString()
                           )
+                        : event.drawDate
+                        ? formatDate(new Date(event.drawDate))
                         : "data não informada"
                     }`
                   : "Ainda não realizado"}
               </p>
             </div>
-            {!event.draw_results_count && (
+            {!isDrawn && (
               <Button
                 variant="primary"
                 onClick={() => setShowDrawModal(true)}
@@ -320,7 +343,7 @@ export default function EventDetailsPage() {
               </Button>
             )}
           </div>
-          {!event.draw_results_count && !canPerformDraw && (
+          {!isDrawn && !canPerformDraw && (
             <p className="text-sm text-yellow-600 mt-2">
               Todos os participantes precisam confirmar presença para liberar o
               sorteio.
@@ -339,31 +362,48 @@ export default function EventDetailsPage() {
                 navigator.clipboard.writeText(url);
                 alert("Link copiado! Compartilhe com os participantes.");
               }}
+              disabled={isDrawn}
+              title={
+                isDrawn
+                  ? "O sorteio já foi realizado. Não é possível convidar novos participantes."
+                  : undefined
+              }
             >
               Copiar link de confirmação
             </Button>
           </div>
-          <form onSubmit={handleAddParticipant} className="space-y-4">
-            <Input
-              label="Nome"
-              type="text"
-              value={newParticipant.name}
-              onChange={(e) =>
-                setNewParticipant({
-                  name: e.target.value,
-                })
-              }
-              error={errors.name}
-              placeholder="Nome completo"
-              required
-            />
-            <p className="text-sm text-gray-500">
-              💡 O participante receberá um link para informar seu WhatsApp e
-              confirmar presença.
-            </p>
-            <Button type="submit" isLoading={isAdding}>
-              Adicionar participante
-            </Button>
+          {isDrawn && (
+            <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+              O sorteio já foi realizado. Não é mais possível adicionar ou
+              remover participantes.
+            </div>
+          )}
+          <form onSubmit={handleAddParticipant}>
+            <fieldset
+              disabled={isDrawn}
+              className={`space-y-4 ${isDrawn ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              <Input
+                label="Nome"
+                type="text"
+                value={newParticipant.name}
+                onChange={(e) =>
+                  setNewParticipant({
+                    name: e.target.value,
+                  })
+                }
+                error={errors.name}
+                placeholder="Nome completo"
+                required
+              />
+              <p className="text-sm text-gray-500">
+                💡 O participante receberá um link para informar seu WhatsApp e
+                confirmar presença.
+              </p>
+              <Button type="submit" isLoading={isAdding} disabled={isDrawn}>
+                Adicionar participante
+              </Button>
+            </fieldset>
           </form>
         </Card>
 
