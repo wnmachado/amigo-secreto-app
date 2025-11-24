@@ -326,8 +326,6 @@ export default function EventDetailsPage() {
                               event.secret_friend_pairs[0].created_at
                             ).toISOString()
                           )
-                        : event.drawDate
-                        ? formatDate(new Date(event.drawDate))
                         : "data não informada"
                     }`
                   : "Ainda não realizado"}
@@ -381,7 +379,9 @@ export default function EventDetailsPage() {
           <form onSubmit={handleAddParticipant}>
             <fieldset
               disabled={isDrawn}
-              className={`space-y-4 ${isDrawn ? "opacity-60 pointer-events-none" : ""}`}
+              className={`space-y-4 ${
+                isDrawn ? "opacity-60 pointer-events-none" : ""
+              }`}
             >
               <Input
                 label="Nome"
@@ -461,6 +461,12 @@ export default function EventDetailsPage() {
                           onClick={() =>
                             handleRemoveParticipant(participant.id)
                           }
+                          disabled={isDrawn}
+                          title={
+                            isDrawn
+                              ? "Participantes não podem ser removidos após o sorteio."
+                              : undefined
+                          }
                         >
                           Remover
                         </Button>
@@ -470,6 +476,12 @@ export default function EventDetailsPage() {
                 </tbody>
               </table>
             </div>
+          )}
+          {isDrawn && (
+            <p className="mt-4 text-sm text-yellow-700">
+              Participantes não podem ser adicionados, removidos ou alterados
+              após a realização do sorteio.
+            </p>
           )}
         </Card>
 

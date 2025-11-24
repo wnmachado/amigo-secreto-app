@@ -7,7 +7,7 @@ export interface Event {
   description: string;
   email: string;
   drawPerformed: boolean;
-  drawDate?: string;
+  drawDate?: Date;
   secret_friend_pairs?: SecretFriendPair[];
   draw_results_count: number;
   status?: string;
