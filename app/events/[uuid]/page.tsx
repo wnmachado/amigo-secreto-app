@@ -143,6 +143,18 @@ export default function EventDetailsPage() {
     return whatsapp;
   };
 
+  const copyLinkToClipboard = async (path: string, successMessage: string) => {
+    const fullUrl = `${window.location.origin}${path}`;
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      showSuccessToast(successMessage);
+    } catch (err) {
+      showInfoToast(
+        `Não foi possível copiar automaticamente. Link: ${fullUrl}`
+      );
+    }
+  };
+
   const handleAddParticipant = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -351,24 +363,38 @@ export default function EventDetailsPage() {
 
         {/* Cadastro de participantes */}
         <Card className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h3 className="text-lg font-semibold">Adicionar participante</h3>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const url = `${window.location.origin}/events/${eventUUID}/confirm`;
-                navigator.clipboard.writeText(url);
-                alert("Link copiado! Compartilhe com os participantes.");
-              }}
-              disabled={isDrawn}
-              title={
-                isDrawn
-                  ? "O sorteio já foi realizado. Não é possível convidar novos participantes."
-                  : undefined
-              }
-            >
-              Copiar link de confirmação
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  copyLinkToClipboard(
+                    `/events/${eventUUID}/confirm`,
+                    "Link de confirmação copiado!"
+                  )
+                }
+                disabled={isDrawn}
+                title={
+                  isDrawn
+                    ? "O sorteio já foi realizado. Não é possível convidar novos participantes."
+                    : undefined
+                }
+              >
+                Copiar link de confirmação
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  copyLinkToClipboard(
+                    `/events/${eventUUID}/gift`,
+                    "Link para atualizar sugestão copiado!"
+                  )
+                }
+              >
+                Copiar link de sugestão
+              </Button>
+            </div>
           </div>
           {isDrawn && (
             <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">

@@ -44,7 +44,7 @@ export default function ConfirmParticipantPage() {
     Participant[]
   >({
     url: `/api/events/${eventUUID}/confirmed/participants`,
-    params: { confirmed: false },
+    params: { confirmed: 0 },
   });
 
   // Mapear e processar dados do evento
