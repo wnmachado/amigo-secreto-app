@@ -296,7 +296,7 @@ export default function DashboardPage() {
                         disabled={sendingReminder === event.uuid}
                         isLoading={sendingReminder === event.uuid}
                         className="w-full text-sm"
-                        title="Reenviar recordatório de sugestão de presente"
+                        title="Reenviar recordatório de sugestão de presentes"
                       >
                         📧 Reenviar recordatório
                       </Button>
