@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
 import api from "@/services/httpClient";
-import { Event } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { handleValidationErrors, showSuccessToast } from "@/utils/errorHandler";
 
@@ -121,6 +120,10 @@ export default function Home() {
     }
   };
 
+  const handleLoginClick = () => {
+    router.push("/login");
+  };
+
   if (isAuthenticated) {
     return null;
   }
@@ -133,7 +136,11 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-blue-600">
               🎁 Amigo Secreto Online
             </h1>
-            <Button variant="outline" onClick={() => router.push("/login")}>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={handleLoginClick}
+            >
               Entrar
             </Button>
           </div>
@@ -237,7 +244,8 @@ export default function Home() {
           <p className="text-gray-600">
             Já tem um evento?{" "}
             <button
-              onClick={() => router.push("/login")}
+              type="button"
+              onClick={handleLoginClick}
               className="text-blue-600 hover:text-blue-700 font-medium underline"
             >
               Clique aqui para entrar

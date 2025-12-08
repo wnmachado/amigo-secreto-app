@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -143,6 +144,31 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSendReminder = async (eventUuid: string) => {
+    const result = await Swal.fire({
+      title: "Enviar recordatório?",
+      text: "Deseja reenviar a notificação de recordatório de sugestão de presente para todos os participantes?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Sim, enviar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      setSendingReminder(eventUuid);
+      try {
+        await api.post(`/api/events/${eventUuid}/participants/send-sugestions-reminder`);
+        showSuccessToast("Recordatório enviado com sucesso!");
+      } catch (error) {
+        handleValidationErrors(error);
+      } finally {
+        setSendingReminder(null);
+      }
+    }
+  };
+
   if (!isAuthenticated) {
     return null;
   }
@@ -239,28 +265,40 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => router.push(`/events/${event.uuid}`)}
-                        className="flex-1"
-                      >
-                        Gerenciar
-                      </Button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => router.push(`/events/${event.uuid}`)}
+                          className="flex-1"
+                        >
+                          Gerenciar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleEdit(event)}
+                          className="px-3"
+                          title="Editar evento"
+                        >
+                          ✏️
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => handleDelete(event)}
+                          className="px-3"
+                          title="Excluir evento"
+                        >
+                          🗑️
+                        </Button>
+                      </div>
                       <Button
                         variant="outline"
-                        onClick={() => handleEdit(event)}
-                        className="px-3"
-                        title="Editar evento"
+                        onClick={() => handleSendReminder(event.uuid)}
+                        disabled={sendingReminder === event.uuid}
+                        isLoading={sendingReminder === event.uuid}
+                        className="w-full text-sm"
+                        title="Reenviar recordatório de sugestão de presente"
                       >
-                        ✏️
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => handleDelete(event)}
-                        className="px-3"
-                        title="Excluir evento"
-                      >
-                        🗑️
+                        📧 Reenviar recordatório
                       </Button>
                     </div>
                   </div>
